@@ -1,5 +1,7 @@
 # AppImage2Desktop
 
+[中文版本 README](README_cn.md)
+
 ## AppImage to Plasma Integrator
 
 This application provides a graphical user interface (GUI) to easily integrate AppImage applications into your Plasma (KDE) desktop environment. It allows you to create `.desktop` files, making your AppImage applications appear in your application launcher with proper names, descriptions, and icons.
