@@ -157,7 +157,7 @@ class AppImageIntegratorApp:
     def browse_appimage(self):
         filename = filedialog.askopenfilename(
             title="Select AppImage",
-            filetypes=[("AppImage files", "*.AppImage"), ("All files", "*.*")],
+            filetypes=[("AppImage files", ("*.AppImage","*.appimage")), ("All files", "*.*")],
         )
         if filename:
             self.appimage_path.set(filename)
