@@ -8,18 +8,25 @@ def create_desktop_shortcut():
     # Get the directory where main.py is located
     current_dir = Path(__file__).parent.absolute()
     main_py_path = current_dir / "main.py"
+    icon_path = current_dir / "icon.png"
 
     # Check if main.py exists
     if not main_py_path.exists():
         print(f"Error: main.py not found at {main_py_path}")
         return False
 
+    # Determine icon path - use icon.png if it exists, otherwise use default
+    if icon_path.exists():
+        icon_file = str(icon_path)
+    else:
+        icon_file = "application-x-executable"
+
     # Create desktop file content
     desktop_content = f"""[Desktop Entry]
 Name=AppImage Integrator
 Comment=Integrate AppImages into KDE Plasma desktop
 Exec=python3 "{main_py_path}"
-Icon=application-x-executable
+Icon={icon_file}
 Terminal=false
 Type=Application
 Categories=Utility;KDE;
