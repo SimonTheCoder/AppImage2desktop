@@ -5,19 +5,19 @@ import shutil
 import stat
 import subprocess
 import tempfile
-import tkinter as tk
-from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+import threading
 import configparser
+from pathlib import Path
+from typing import Optional
+from tkinter import filedialog, messagebox, ttk
+import tkinter as tk
 
 
 class AppImageIntegratorApp:
-    def __init__(self, root):
+    def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("AppImage to Plasma Integrator")
-        self.root.geometry(
-            "600x450"
-        )  # Slightly adjusted height since we are compacting rows
+        self.root.geometry("600x450")
 
         # Configure root grid expansion
         self.root.columnconfigure(0, weight=1)
@@ -39,15 +39,12 @@ class AppImageIntegratorApp:
         # Layout
         self.create_widgets()
 
-    def create_widgets(self):
+    def create_widgets(self) -> None:
         # Main Container
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.grid(row=0, column=0, sticky="nsew")
 
-        # Configure column weights for the main frame
-        # Column 0: Labels (fixed width mainly)
-        # Column 1: Entry fields (expands to fill space)
-        # Column 2: Buttons (fixed width)
+        # Configure column weights
         main_frame.columnconfigure(1, weight=1)
 
         # Header
@@ -56,10 +53,9 @@ class AppImageIntegratorApp:
         )
         header.grid(row=0, column=0, columnspan=3, pady=(0, 20), sticky="w")
 
-        # Standard padding for rows
         pady_std = 8
 
-        # Row 1: Label | Entry | Button Frame (Browse + Extract & Populate)
+        # Row 1: AppImage File
         ttk.Label(main_frame, text="AppImage File:").grid(
             row=1, column=0, sticky="w", padx=(0, 10)
         )
@@ -67,7 +63,6 @@ class AppImageIntegratorApp:
         entry_app = ttk.Entry(main_frame, textvariable=self.appimage_path)
         entry_app.grid(row=1, column=1, sticky="ew", pady=pady_std)
 
-        # Button sub-frame for AppImage actions
         app_btn_frame = ttk.Frame(main_frame)
         app_btn_frame.grid(row=1, column=2, padx=(10, 0), pady=pady_std, sticky="e")
 
@@ -79,11 +74,10 @@ class AppImageIntegratorApp:
             app_btn_frame,
             text="Extract & Populate",
             width=16,
-            command=self.extract_and_populate,
+            command=self.extract_and_populate_async,
         ).pack(side=tk.LEFT)
 
-        # 2. App Name
-        # Row 2: Label | Entry (spans 2 cols)
+        # Row 2: App Name
         ttk.Label(main_frame, text="App Name:").grid(
             row=2, column=0, sticky="w", padx=(0, 10)
         )
@@ -91,8 +85,7 @@ class AppImageIntegratorApp:
             row=2, column=1, columnspan=2, sticky="ew", pady=pady_std
         )
 
-        # 3. Description / Comment
-        # Row 3: Label | Entry (spans 2 cols)
+        # Row 3: Description
         ttk.Label(main_frame, text="Description:").grid(
             row=3, column=0, sticky="w", padx=(0, 10)
         )
@@ -100,8 +93,7 @@ class AppImageIntegratorApp:
             row=3, column=1, columnspan=2, sticky="ew", pady=pady_std
         )
 
-        # 4. Icon Selection
-        # Row 4: Label | Entry | Button Frame (Browse + Extract)
+        # Row 4: Icon Selection
         ttk.Label(main_frame, text="Icon:").grid(
             row=4, column=0, sticky="w", padx=(0, 10)
         )
@@ -109,29 +101,19 @@ class AppImageIntegratorApp:
             row=4, column=1, sticky="ew", pady=pady_std
         )
 
-        # Button sub-frame for Icon actions
         btn_frame = ttk.Frame(main_frame)
         btn_frame.grid(row=4, column=2, padx=(10, 0), pady=pady_std, sticky="e")
         ttk.Button(btn_frame, text="Browse", width=8, command=self.browse_icon).pack(
             side=tk.LEFT, padx=(0, 2)
         )
 
-        # 5. Categories
-        # Row 5: Label | Combobox (spans 2 cols)
+        # Row 5: Categories
         ttk.Label(main_frame, text="Category:").grid(
             row=5, column=0, sticky="w", padx=(0, 10)
         )
         categories = [
-            "Utility",
-            "Development",
-            "Education",
-            "Game",
-            "Graphics",
-            "Network",
-            "Office",
-            "AudioVideo",
-            "System",
-            "Settings",
+            "Utility", "Development", "Education", "Game", "Graphics",
+            "Network", "Office", "AudioVideo", "System", "Settings",
         ]
         category_cb = ttk.Combobox(
             main_frame,
@@ -141,10 +123,9 @@ class AppImageIntegratorApp:
         )
         category_cb.grid(row=5, column=1, columnspan=2, sticky="ew", pady=pady_std)
 
-        # 6. Generate Button
-        # Row 6: Centered Button
+        # Row 6: Generate Button
         generate_btn = ttk.Button(
-            main_frame, text="Generate & Integrate", command=self.generate_desktop_file
+            main_frame, text="Generate & Integrate", command=self.generate_desktop_file_async
         )
         generate_btn.grid(
             row=6, column=0, columnspan=3, pady=(20, 10), ipady=5, sticky="ew"
@@ -156,24 +137,38 @@ class AppImageIntegratorApp:
         )
         self.status_label.grid(row=7, column=0, columnspan=3, pady=5)
 
-    def browse_appimage(self):
+    def _update_ui_status(self, text: str, color: str = "black") -> None:
+        """Thread-safe way to update the status label."""
+        self.root.after(0, lambda: self.status_label.config(text=text, foreground=color))
+
+    def _show_error_dialog(self, title: str, message: str) -> None:
+        """Thread-safe way to show error dialogs."""
+        self.root.after(0, lambda: messagebox.showerror(title, message))
+
+    def _show_info_dialog(self, title: str, message: str) -> None:
+        """Thread-safe way to show info dialogs."""
+        self.root.after(0, lambda: messagebox.showinfo(title, message))
+
+    def _show_warning_dialog(self, title: str, message: str) -> None:
+        """Thread-safe way to show warning dialogs."""
+        self.root.after(0, lambda: messagebox.showwarning(title, message))
+
+    def browse_appimage(self) -> None:
         filename = filedialog.askopenfilename(
             title="Select AppImage",
-            filetypes=[("AppImage files", ("*.AppImage","*.appimage")), ("All files", "*.*")],
+            filetypes=[("AppImage files", ("*.AppImage", "*.appimage")), ("All files", "*.*")],
         )
         if filename:
             self.appimage_path.set(filename)
-            # Try to guess name
             basename = os.path.basename(filename)
             name_guess = basename.split("-")[0].split("_")[0].capitalize()
-            # Remove extension if present (though split above handles typical AppImage naming)
             if name_guess.lower().endswith(".appimage"):
                 name_guess = name_guess[:-9]
 
             if not self.app_name.get():
                 self.app_name.set(name_guess)
 
-    def browse_icon(self):
+    def browse_icon(self) -> None:
         filename = filedialog.askopenfilename(
             title="Select Icon",
             filetypes=[
@@ -184,14 +179,18 @@ class AppImageIntegratorApp:
         if filename:
             self.icon_path.set(filename)
 
-    def extract_and_populate(self):
+    def extract_and_populate_async(self) -> None:
+        """Triggered by the button. Starts the extraction thread."""
         app_path = self.appimage_path.get()
         if not app_path or not os.path.exists(app_path):
-            messagebox.showerror("Error", "Please select a valid AppImage first.")
+            self._show_error_dialog("Error", "Please select a valid AppImage first.")
             return
 
-        self.status_label.config(text="Extracting AppImage...", foreground="blue")
-        self.root.update()
+        threading.Thread(target=self._threaded_extract_and_populate, args=(app_path,), daemon=True).start()
+
+    def _threaded_extract_and_populate(self, app_path: str) -> None:
+        """The actual heavy lifting in a background thread."""
+        self._update_ui_status("Extracting AppImage...", "blue")
 
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
@@ -208,13 +207,8 @@ class AppImageIntegratorApp:
                 # Find the .desktop file
                 desktop_file = self.find_desktop_file(squashfs_root)
                 if not desktop_file:
-                    messagebox.showwarning(
-                        "Not Found", "No .desktop file found in the AppImage."
-                    )
-                    self.status_label.config(
-                        text="Extraction complete, but no .desktop file found.",
-                        foreground="orange",
-                    )
+                    self._show_warning_dialog("Not Found", "No .desktop file found in the AppImage.")
+                    self._update_ui_status("Extraction complete, but no .desktop file found.", "orange")
                     return
 
                 # Parse the .desktop file
@@ -222,11 +216,12 @@ class AppImageIntegratorApp:
                 config.read(desktop_file)
                 desktop_entry = config["Desktop Entry"]
 
-                self.app_name.set(desktop_entry.get("Name", ""))
-                self.app_comment.set(desktop_entry.get("Comment", ""))
+                # Update UI variables via thread-safe method
+                self.root.after(0, lambda: self.app_name.set(desktop_entry.get("Name", "")))
+                self.root.after(0, lambda: self.app_comment.set(desktop_entry.get("Comment", "")))
                 categories = desktop_entry.get("Categories", "Utility").split(";")
                 if categories:
-                    self.app_category.set(categories[0])
+                    self.root.after(0, lambda: self.app_category.set(categories[0]))
 
                 # Find and copy the icon
                 icon_name = desktop_entry.get("Icon")
@@ -235,42 +230,36 @@ class AppImageIntegratorApp:
                     if icon_path:
                         self.copy_and_set_icon(icon_path)
                     else:
-                        messagebox.showwarning(
+                        self._show_warning_dialog(
                             "Icon Not Found",
                             f"Icon '{icon_name}' not found in the AppImage.",
                         )
 
-                self.status_label.config(
-                    text="Successfully populated from AppImage.", foreground="green"
-                )
+                self._update_ui_status("Successfully populated from AppImage.", "green")
 
             except subprocess.CalledProcessError as e:
-                messagebox.showerror(
-                    "Extraction Failed",
-                    f"Failed to extract AppImage.\n\n{e.stderr.decode()}",
-                )
-                self.status_label.config(
-                    text="AppImage extraction failed.", foreground="red"
-                )
+                err_msg = e.stderr.decode() if e.stderr else str(e)
+                self._show_error_dialog("Extraction Failed", f"Failed to extract AppImage.\n\n{err_msg}")
+                self._update_ui_status("AppImage extraction failed.", "red")
             except Exception as e:
-                messagebox.showerror("Error", f"An error occurred: {e}")
-                self.status_label.config(text="An error occurred.", foreground="red")
+                self._show_error_dialog("Error", f"An error occurred: {e}")
+                self._update_ui_status("An error occurred.", "red")
 
-    def find_desktop_file(self, search_dir):
+    def find_desktop_file(self, search_dir: str) -> Optional[str]:
         for root, _, files in os.walk(search_dir):
             for file in files:
                 if file.endswith(".desktop"):
                     return os.path.join(root, file)
         return None
 
-    def find_icon_file(self, search_dir, icon_name):
+    def find_icon_file(self, search_dir: str, icon_name: str) -> Optional[str]:
         for root, _, files in os.walk(search_dir):
             for file in files:
                 if Path(file).stem == icon_name:
                     return os.path.join(root, file)
         return None
 
-    def copy_and_set_icon(self, icon_path):
+    def copy_and_set_icon(self, icon_path: str) -> None:
         icons_dir = os.path.expanduser("~/.local/share/icons")
         os.makedirs(icons_dir, exist_ok=True)
         
@@ -281,21 +270,25 @@ class AppImageIntegratorApp:
         shutil.copy2(icon_path, dest_path)
         self.icon_path.set(dest_path)
 
-    def generate_desktop_file(self):
-        # 1. Validation
+    def generate_desktop_file_async(self) -> None:
+        """Triggered by the button. Starts the generation thread."""
         app_path = self.appimage_path.get()
         name = self.app_name.get()
         icon = self.icon_path.get()
         category = self.app_category.get()
 
         if not app_path or not os.path.exists(app_path):
-            messagebox.showerror("Error", "AppImage path is invalid.")
+            self._show_error_dialog("Error", "AppImage path is invalid.")
             return
         if not name:
-            messagebox.showerror("Error", "Application Name is required.")
+            self._show_error_dialog("Error", "Application Name is required.")
             return
 
-        # 2. Prepare Paths
+        self._update_ui_status("Generating file...", "blue")
+        threading.Thread(target=self._threaded_generate_desktop_file, args=(app_path, name, icon, category), daemon=True).start()
+
+    def _threaded_generate_desktop_file(self, app_path: str, name: str, icon: str, category: str) -> None:
+        """The actual heavy lifting in a background thread."""
         applications_dir = os.path.expanduser("~/.local/share/applications")
         os.makedirs(applications_dir, exist_ok=True)
 
@@ -307,11 +300,11 @@ class AppImageIntegratorApp:
             st = os.stat(app_path)
             os.chmod(app_path, st.st_mode | stat.S_IEXEC)
         except Exception as e:
-            messagebox.showerror("Error", f"Could not make AppImage executable:\n{e}")
+            self._show_error_dialog("Error", f"Could not make AppImage executable:\n{e}")
+            self._update_ui_status("Error making AppImage executable.", "red")
             return
 
         # 4. Generate Content
-        # XDG Desktop Entry Specification
         content = [
             "[Desktop Entry]",
             "Type=Application",
@@ -330,32 +323,30 @@ class AppImageIntegratorApp:
             with open(desktop_path, "w") as f:
                 f.write("\n".join(content))
 
-            # 6. Make .desktop executable (optional but good practice in KDE)
+            # 6. Make .desktop executable
             st = os.stat(desktop_path)
             os.chmod(desktop_path, st.st_mode | stat.S_IEXEC)
 
-            # 7. Trigger Database Update (Helps KDE notice it immediately)
+            # 7. Trigger Database Update
             try:
                 subprocess.run(
                     ["update-desktop-database", applications_dir], check=False
                 )
             except FileNotFoundError:
-                pass  # Tool might not be installed, KDE usually picks it up anyway
+                pass
 
-            self.status_label.config(
-                text=f"Created: {desktop_filename}", foreground="green"
-            )
-            messagebox.showinfo(
+            self._update_ui_status(f"Created: {desktop_filename}", "green")
+            self._show_info_dialog(
                 "Success",
                 f"Application added to menu!\n\nFile created at:\n{desktop_path}\n\nYou may need to wait a few seconds for it to appear in the launcher.",
             )
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to write desktop file:\n{e}")
-            self.status_label.config(text="Write failed.", foreground="red")
+            self._show_error_dialog("Error", f"Failed to write desktop file:\n{e}")
+            self._update_ui_status("Write failed.", "red")
 
 
-def main():
+def main() -> None:
     """Entry point for the GUI application."""
     root = tk.Tk()
     app = AppImageIntegratorApp(root)
