@@ -4,9 +4,9 @@ version = "0.1.0"
 description = "GUI tool to integrate AppImage applications into KDE Plasma desktop"
 readme = "README.md"
 requires-python = ">=3.12"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
-    {name = "Simon", email = "simon@example.com"},
+    {name = "Simon", email = "me@simonthecoder.top"},
 ]
 keywords = ["appimage", "kde", "plasma", "desktop", "integration"]
 
