@@ -1,0 +1,18 @@
+[project]
+name = "appimage2desktop"
+version = "0.1.0"
+description = "GUI tool to integrate AppImage applications into KDE Plasma desktop"
+readme = "README.md"
+requires-python = ">=3.12"
+license = {text = "MIT"}
+authors = [
+    {name = "Simon", email = "simon@example.com"},
+]
+keywords = ["appimage", "kde", "plasma", "desktop", "integration"]
+
+[project.scripts]
+appimage2desktop = "appimage2desktop.main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
