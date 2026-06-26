@@ -153,6 +153,29 @@ class AppImageIntegratorApp:
         """Thread-safe way to show warning dialogs."""
         self.root.after(0, lambda: messagebox.showwarning(title, message))
 
+    def _confirm_permission_change(self, app_path: str) -> bool:
+        """Show a confirmation dialog before making the AppImage executable.
+        Thread-safe: works from both main and worker threads.
+        Skips the prompt if the file is already executable."""
+        st = os.stat(app_path)
+        if st.st_mode & stat.S_IEXEC:
+            return True
+
+        result = [False]
+        ready = threading.Event()
+
+        def show_dialog():
+            answer = messagebox.askyesno(
+                "Security Warning",
+                f"This action will make the following file executable:\n\n{app_path}\n\nDo you want to proceed?",
+            )
+            result[0] = answer
+            ready.set()
+
+        self.root.after(0, show_dialog)
+        ready.wait()
+        return result[0]
+
     def browse_appimage(self) -> None:
         filename = filedialog.askopenfilename(
             title="Select AppImage",
@@ -194,6 +217,14 @@ class AppImageIntegratorApp:
 
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
+                # Security: confirm before changing executable permission
+                if not self._confirm_permission_change(app_path):
+                    self._update_ui_status("Extraction cancelled by user.", "orange")
+                    return
+
+                st = os.stat(app_path)
+                os.chmod(app_path, st.st_mode | stat.S_IEXEC)
+
                 # Extract the AppImage
                 subprocess.run(
                     [app_path, "--appimage-extract"],
@@ -295,7 +326,11 @@ class AppImageIntegratorApp:
         desktop_filename = f"{name.replace(' ', '_').lower()}.desktop"
         desktop_path = os.path.join(applications_dir, desktop_filename)
 
-        # 3. Make AppImage Executable
+        # 3. Security: confirm before making AppImage executable
+        if not self._confirm_permission_change(app_path):
+            self._update_ui_status("Generation cancelled by user.", "orange")
+            return
+
         try:
             st = os.stat(app_path)
             os.chmod(app_path, st.st_mode | stat.S_IEXEC)
