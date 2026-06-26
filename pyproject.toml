@@ -1,6 +1,6 @@
 [project]
 name = "appimage2desktop"
-version = "0.1.0"
+version = "0.1.1"
 description = "GUI tool to integrate AppImage applications into KDE Plasma desktop"
 readme = "README.md"
 requires-python = ">=3.12"
