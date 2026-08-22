@@ -12,6 +12,7 @@
 - **提取图标：** 如果 AppImage 内置的 `.desktop` 文件指定了图标，程序会自动提取该图标并保存到 `~/.local/share/icons/` 目录。
 - **生成桌面文件：** 在 `~/.local/share/applications/` 目录下创建 `.desktop` 文件，实现与桌面环境的无缝集成。
 - **设置执行权限：** 自动为 AppImage 文件和生成的 `.desktop` 文件添加可执行权限。
+- **自注册：** 点击 “Add AppImage2desktop to Applications” 按钮，可将本工具自身注册到系统程序菜单中。
 
 ## 使用方法
 
@@ -27,6 +28,7 @@
     *   程序会尝试提取并保存图标至 `~/.local/share/icons/`，然后更新界面上的“Icon”路径。
 4.  **检查与自定义：** 检查 “App Name”、“Description”、“Icon” 和 “Category” 字段的内容。如果自动提取的信息不完整，或您想使用其他图标，可以手动进行修改。
 5.  **生成并集成：** 点击 “Generate & Integrate” 按钮，创建 `.desktop` 文件，并将您的 AppImage 集成到程序菜单中。
+6.  **（可选）将本工具加入程序菜单：** 点击 “Add AppImage2desktop to Applications” 按钮，可将 AppImage2desktop 自身注册到系统程序菜单，方便从启动器直接打开。
 
 ## 依赖
 

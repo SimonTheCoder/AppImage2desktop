@@ -14,6 +14,7 @@ This application provides a graphical user interface (GUI) to easily integrate A
 - **Icon Extraction:** If an icon is specified in the AppImage's internal `.desktop` file, it will be extracted and saved to `~/.local/share/icons/`.
 - **Desktop File Generation:** Creates a `.desktop` file in `~/.local/share/applications/` for seamless integration with your desktop environment.
 - **Executable Permissions:** Automatically sets executable permissions for both the AppImage and the generated `.desktop` file.
+- **Self-Registration:** Use the "Add AppImage2desktop to Applications" button to register this tool itself in your application menu.
 
 ## How to Use
 
@@ -29,6 +30,7 @@ This application provides a graphical user interface (GUI) to easily integrate A
     *   It will also attempt to extract and save the specified icon to `~/.local/share/icons/` and update the "Icon" field.
 4.  **Review/Customize:** Verify the "App Name," "Description," "Icon," and "Category" fields. You can adjust them manually if the extracted information isn't perfect or if you wish to use a different icon (via the "Browse" button next to "Icon").
 5.  **Generate & Integrate:** Click the "Generate & Integrate" button. This will create the `.desktop` file and integrate your AppImage into your application menu.
+6.  **(Optional) Add this tool to Applications:** Click the "Add AppImage2desktop to Applications" button to register AppImage2desktop itself in your application menu, so you can launch it from the launcher.
 
 ## Prerequisites
 

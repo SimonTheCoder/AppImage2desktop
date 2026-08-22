@@ -12,6 +12,8 @@ from typing import Optional
 from tkinter import filedialog, messagebox, ttk
 import tkinter as tk
 
+from appimage2desktop.shortcut import create_desktop_shortcut
+
 
 class AppImageIntegratorApp:
     def __init__(self, root: tk.Tk):
@@ -131,11 +133,19 @@ class AppImageIntegratorApp:
             row=6, column=0, columnspan=3, pady=(20, 10), ipady=5, sticky="ew"
         )
 
+        # Row 7: Add this tool itself to the Applications menu
+        self_btn = ttk.Button(
+            main_frame,
+            text="Add AppImage2desktop to Applications",
+            command=self.add_self_to_applications,
+        )
+        self_btn.grid(row=7, column=0, columnspan=3, pady=(0, 10), sticky="ew")
+
         # Status Area
         self.status_label = ttk.Label(
             main_frame, text="Ready", foreground="gray", anchor="center"
         )
-        self.status_label.grid(row=7, column=0, columnspan=3, pady=5)
+        self.status_label.grid(row=8, column=0, columnspan=3, pady=5)
 
     def _update_ui_status(self, text: str, color: str = "black") -> None:
         """Thread-safe way to update the status label."""
@@ -300,6 +310,25 @@ class AppImageIntegratorApp:
 
         shutil.copy2(icon_path, dest_path)
         self.icon_path.set(dest_path)
+
+    def add_self_to_applications(self) -> None:
+        """Register AppImage2desktop itself in the Applications menu."""
+        self._update_ui_status("Adding AppImage2desktop to Applications...", "blue")
+        try:
+            desktop_path = create_desktop_shortcut()
+        except Exception as e:
+            self._show_error_dialog(
+                "Error", f"Failed to add AppImage2desktop to Applications:\n{e}"
+            )
+            self._update_ui_status("Self-registration failed.", "red")
+            return
+
+        self._update_ui_status(f"Created: {Path(desktop_path).name}", "green")
+        self._show_info_dialog(
+            "Success",
+            f"AppImage2desktop added to menu!\n\nFile created at:\n{desktop_path}\n\n"
+            "You may need to wait a few seconds for it to appear in the launcher.",
+        )
 
     def generate_desktop_file_async(self) -> None:
         """Triggered by the button. Starts the generation thread."""
